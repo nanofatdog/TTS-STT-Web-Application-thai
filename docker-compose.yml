@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  tts-stt-app:
+    build: .
+    ports:
+      - "8685:8685"
+    volumes:
+      - ./audio_output:/app/audio_output
+    environment:
+      - PORT=8685
+      - HOST=0.0.0.0
+    restart: unless-stopped
