@@ -40,6 +40,8 @@ Docker (สำหรับการใช้งานผ่าน container)
 ### วิธีที่ 2: ติดตั้งโดยตรง
   1. ติดตั้ง dependencies: 
   ```
+  conda create -n tts-stt-thai python=3.10 -y
+  cd TTS-STT-Web-Application-thai
   pip install -r requirements.txt
   ```
   2. รันแอปพลิเคชัน:
