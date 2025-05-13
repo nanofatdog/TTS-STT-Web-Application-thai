@@ -1,6 +1,7 @@
 # TTS-STT-Web-Application-thai
 เว็บแอปพลิเคชันสำหรับแปลงข้อความเป็นเสียง (TTS) และแปลงเสียงเป็นข้อความ (STT) พร้อมระบบดาวน์โหลดไฟล์เสียง
-
+![image](https://github.com/nanofatdog/TTS-STT-Web-Application-thai/blob/main/images/tts.png)
+![image](https://github.com/nanofatdog/TTS-STT-Web-Application-thai/blob/main/images/stt.png)
 ## คุณสมบัติหลัก
 ### Text-to-Speech (TTS)
   - สนับสนุนเสียงภาษาไทยและภาษาอังกฤษ
