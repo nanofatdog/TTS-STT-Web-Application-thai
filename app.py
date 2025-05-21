@@ -10,14 +10,19 @@ import contextlib
 import asyncio
 from io import BytesIO
 import json
+import pytesseract
+from PIL import Image
+import fitz  # PyMuPDF
+import numpy as np
 
-# โหลดข้อมูล voices จากไฟล์ JSON
+# Load voice data from JSON file
 with open('voices.json', 'r', encoding='utf-8') as f:
     VOICES = json.load(f)
 
+
 async def generate_audio(text: str, voice: str, rate: int, progress=gr.Progress()):
     try:
-        progress(0.1, desc="กำลังเริ่มต้น...")
+        progress(0.1, desc="Initializing...")
 
         output_dir = "audio_output"
         os.makedirs(output_dir, exist_ok=True)
@@ -32,18 +37,18 @@ async def generate_audio(text: str, voice: str, rate: int, progress=gr.Progress(
         else:
             rate_str = None
 
-        progress(0.3, desc="กำลังสร้างเสียง...")
+        progress(0.3, desc="Generating audio...")
 
         communicate = edge_tts.Communicate(text, voice, rate=rate_str) if rate_str else edge_tts.Communicate(text, voice)
 
-        progress(0.6, desc="กำลังบันทึกไฟล์เสียง...")
+        progress(0.6, desc="Saving audio file...")
 
         await communicate.save(output_file)
 
         if not os.path.exists(output_file):
-            raise Exception("ไฟล์เสียงไม่ถูกสร้าง")
+            raise Exception("Audio file was not created")
 
-        progress(1.0, desc="สร้างเสียงสำเร็จ!")
+        progress(1.0, desc="Audio generation complete!")
 
         return output_file, None
 
@@ -69,16 +74,16 @@ def speech_to_text(audio_file, language: str):
 
             result = subprocess.run(cmd, capture_output=True, text=True)
             if result.returncode != 0:
-                return None, f"การแปลงไฟล์เสียงล้มเหลว: {result.stderr}"
+                return None, f"Audio conversion failed: {result.stderr}"
 
             try:
                 with contextlib.closing(wave.open(wav_tmp_path, 'r')) as f:
                     frames = f.getnframes()
                     rate = f.getframerate()
                     if frames == 0 or rate != 16000:
-                        return None, "คุณภาพไฟล์เสียงไม่เหมาะสม (ต้องเป็น 16kHz mono)"
+                        return None, "Audio quality not suitable (must be 16kHz mono)"
             except wave.Error:
-                return None, "ไฟล์ WAV ที่แปลงแล้วเสียหาย"
+                return None, "Converted WAV file is corrupted"
 
             recognizer = sr.Recognizer()
             with sr.AudioFile(wav_tmp_path) as source:
@@ -91,7 +96,7 @@ def speech_to_text(audio_file, language: str):
                         return text, None
                     except sr.UnknownValueError:
                         if language == "th-TH":
-                            return None, "ไม่สามารถเข้าใจคำพูดภาษาไทย"
+                            return None, "Could not understand Thai speech"
 
                 try:
                     text = recognizer.recognize_google(audio_data, language="en-US")
@@ -99,7 +104,7 @@ def speech_to_text(audio_file, language: str):
                 except sr.UnknownValueError:
                     return None, "Could not understand the audio"
                 except sr.RequestError as e:
-                    return None, f"ไม่สามารถเชื่อมต่อกับบริการ Google: {str(e)}"
+                    return None, f"Could not connect to Google service: {str(e)}"
 
         finally:
             try:
@@ -108,38 +113,80 @@ def speech_to_text(audio_file, language: str):
                 pass
 
     except Exception as e:
-        return None, f"ข้อผิดพลาดทั่วไป: {str(e)}"
+        return None, f"General error: {str(e)}"
+
+def extract_text_from_pdf(pdf_file):
+    try:
+        doc = fitz.open(pdf_file)
+        text = ""
+        for page in doc:
+            text += page.get_text()
+        return text, None
+    except Exception as e:
+        return None, f"PDF extraction error: {str(e)}"
+
+def extract_text_from_image(image_file):
+    try:
+        img = Image.open(image_file)
+        # Use Tesseract OCR with automatic language detection
+        text = pytesseract.image_to_string(img, lang='eng+tha+jpn+chi_sim')
+        return text, None
+    except Exception as e:
+        return None, f"OCR error: {str(e)}"
+
+def ocr_process(file, file_type):
+    if file_type == "PDF":
+        return extract_text_from_pdf(file)
+    elif file_type == "Image":
+        return extract_text_from_image(file)
+    else:
+        return None, "Unsupported file type"
 
 def tts_tab():
     with gr.Blocks() as tts_interface:
         with gr.Row():
             with gr.Column():
-                text_input = gr.Textbox(label="ข้อความ", placeholder="ป้อนข้อความที่นี่...", lines=5)
-                voice_dropdown = gr.Dropdown(
-                    choices=list(VOICES.items()),
-                    label="เสียง",
-                    value="th-TH-PremwadeeNeural"
-                )
-                rate_slider = gr.Slider(
-                    minimum=-100,
-                    maximum=100,
-                    value=0,
-                    label="ความเร็ว (%)"
-                )
-                generate_btn = gr.Button("สร้างเสียง", variant="primary")
+                text_input = gr.Textbox(label="Text", placeholder="Enter text here...", lines=5)
+                with gr.Row():
+                    voice_dropdown = gr.Dropdown(
+                        choices=list(VOICES.items()),
+                        label="Voice",
+                        value="th-TH-PremwadeeNeural"
+                    )
+                    rate_slider = gr.Slider(
+                        minimum=-100,
+                        maximum=100,
+                        value=0,
+                        label="Speed (%)"
+                    )
+                with gr.Accordion("OCR from File", open=False):
+                    file_input = gr.File(label="Upload PDF or Image")
+                    file_type = gr.Radio(
+                        choices=["PDF", "Image"],
+                        label="File Type",
+                        value="PDF"
+                    )
+                    extract_btn = gr.Button("Extract Text")
+                generate_btn = gr.Button("Generate Audio", variant="primary")
 
             with gr.Column():
-                audio_output = gr.Audio(label="เสียงที่สร้าง", interactive=False, visible=False)
-                # เปลี่ยนเป็น gr.File สำหรับการดาวน์โหลด
+                audio_output = gr.Audio(label="Generated Audio", interactive=False, visible=True)
                 download_component = gr.File(
-                    label="ดาวน์โหลดไฟล์เสียง",
+                    label="Download Audio",
                     visible=False,
                     interactive=False
                 )
-                error_output = gr.Textbox(label="ข้อผิดพลาด", visible=False)
+                error_output = gr.Textbox(label="Error", visible=False)
+
+        def extract_text(file, file_type):
+            text, error = ocr_process(file, file_type)
+            if error:
+                return None, gr.update(value=error, visible=True)
+            else:
+                return text, gr.update(visible=False)
 
         def generate(text, voice, rate, progress=gr.Progress()):
-            progress(0.1, desc="กำลังเริ่มต้น...")
+            progress(0.1, desc="Initializing...")
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             audio_file, error = loop.run_until_complete(generate_audio(text, voice, rate, progress))
@@ -147,29 +194,35 @@ def tts_tab():
 
             if error:
                 return (
-                    None,  # audio_output
-                    gr.update(visible=False),  # audio player visibility
-                    None,  # download file
-                    gr.update(visible=False),  # download component visibility
-                    gr.update(value=error, visible=True)  # error
+                    None,
+                    gr.update(visible=False),
+                    None,
+                    gr.update(visible=False),
+                    gr.update(value=error, visible=True)
                 )
             else:
                 return (
-                    audio_file,  # audio_output
-                    gr.update(visible=True),  # audio player visibility
-                    audio_file,  # download file
-                    gr.update(visible=True),  # download component visibility
-                    gr.update(visible=False)  # error
+                    audio_file,
+                    gr.update(visible=True),
+                    audio_file,
+                    gr.update(visible=True),
+                    gr.update(visible=False)
                 )
+
+        extract_btn.click(
+            fn=extract_text,
+            inputs=[file_input, file_type],
+            outputs=[text_input, error_output]
+        )
 
         generate_btn.click(
             fn=generate,
             inputs=[text_input, voice_dropdown, rate_slider],
             outputs=[
                 audio_output,
-                audio_output,  # สำหรับอัปเดต visibility
+                audio_output,
                 download_component,
-                download_component,  # สำหรับอัปเดต visibility
+                download_component,
                 error_output
             ],
             show_progress=True
@@ -181,17 +234,17 @@ def stt_tab():
     with gr.Blocks() as stt_interface:
         with gr.Row():
             with gr.Column():
-                audio_input = gr.Audio(label="อัปโหลดไฟล์เสียง", type="filepath")
+                audio_input = gr.Audio(label="Upload Audio File", type="filepath")
                 language_dropdown = gr.Dropdown(
                     choices=["th-TH", "en-US", "auto"],
-                    label="ภาษา",
+                    label="Language",
                     value="auto"
                 )
-                convert_btn = gr.Button("แปลงเป็นข้อความ", variant="primary")
+                convert_btn = gr.Button("Convert to Text", variant="primary")
 
             with gr.Column():
-                text_output = gr.Textbox(label="ผลลัพธ์", lines=5, interactive=False)
-                error_output = gr.Textbox(label="ข้อผิดพลาด", visible=False)
+                text_output = gr.Textbox(label="Result", lines=5, interactive=False)
+                error_output = gr.Textbox(label="Error", visible=False)
 
         def convert(audio_file, language):
             text, error = speech_to_text(audio_file, language)
@@ -208,8 +261,8 @@ def stt_tab():
 
     return stt_interface
 
-with gr.Blocks(title="TTS & STT Web UI", theme=gr.themes.Soft()) as app:
-    gr.Markdown("# TTS & STT Web UI")
+with gr.Blocks(title="TTS & STT & OCR Web UI", theme=gr.themes.Soft()) as app:
+    gr.Markdown("# Multi-language TTS, STT & OCR Web UI")
     with gr.Tabs():
         with gr.TabItem("Text-to-Speech (TTS)"):
             tts_tab()
@@ -217,4 +270,10 @@ with gr.Blocks(title="TTS & STT Web UI", theme=gr.themes.Soft()) as app:
             stt_tab()
 
 if __name__ == "__main__":
+    # Check if Tesseract is available
+    try:
+        pytesseract.get_tesseract_version()
+    except EnvironmentError:
+        print("Warning: Tesseract OCR is not installed or not in your PATH")
+
     app.launch(server_port=8685, server_name="0.0.0.0")
