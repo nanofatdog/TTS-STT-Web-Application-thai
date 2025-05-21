@@ -7,3 +7,8 @@ mypy==1.4.1           # Static type checking
 isort==5.12.0         # Import sorting
 pre-commit==3.3.3     # Git hooks manager
 python-dotenv==1.0.0  # Environment variables
+
+# OCR-related dependencies for development/testing
+pytesseract==0.3.10
+pillow==10.1.0
+pymupdf==1.23.25
