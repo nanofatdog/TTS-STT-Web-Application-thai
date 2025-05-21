@@ -2,5 +2,10 @@
     "Thai Male": "th-TH-NiwatNeural",
     "Thai Female": "th-TH-PremwadeeNeural",
     "English Female 1": "en-US-AriaNeural",
-    "English Female 2": "en-US-AnaNeural"
+    "English Female 2": "en-US-AnaNeural",
+    "Japanese Female": "ja-JP-NanamiNeural",
+    "Japanese Male": "ja-JP-KeitaNeural",
+    "Chinese (Mandarin) Female 1": "zh-CN-XiaoxiaoNeural",
+    "Chinese (Mandarin) Male 1": "zh-CN-YunxiNeural",
+    "Chinese (Mandarin) Female 2": "zh-CN-YunyangNeural"
 }
