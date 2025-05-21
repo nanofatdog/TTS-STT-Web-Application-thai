@@ -1,9 +1,9 @@
 # TTS-STT-Web-Application-thai
 เว็บแอปพลิเคชันสำหรับแปลงข้อความเป็นเสียง (TTS) และแปลงเสียงเป็นข้อความ (STT) พร้อมระบบดาวน์โหลดไฟล์เสียง
-![image](https://github.com/nanofatdog/TTS-STT-Web-Application-thai/blob/main/images/tts.png)
-![image](https://github.com/nanofatdog/TTS-STT-Web-Application-thai/blob/main/images/stt.png)
+![image](https://github.com/nanofatdog/TTS-STT-Web-Application-thai/blob/main/images/main.png)
+![image](https://github.com/nanofatdog/TTS-STT-Web-Application-thai/blob/main/images/ocr.png)
 ## คุณสมบัติหลัก
-### Text-to-Speech (TTS)
+### Text-to-Speech (TTS) + OCR pdf image
   - สนับสนุนเสียงภาษาไทยและภาษาอังกฤษ
   - ปรับความเร็วเสียงได้
   - แสดงผล waveform กราฟิก
@@ -69,6 +69,12 @@ tts-stt-app/
 - pydub - ประมวลผลไฟล์เสียง (พัฒนาโดย Jiří Otáhal)
 - ffmpeg-python - อินเทอร์เฟซ Python สำหรับ FFmpeg (พัฒนาโดย Karl Kroening)
 ขอขอบคุณผู้พัฒนาทุกท่านที่สร้างไลบรารีที่มีประโยชน์เหล่านี้
+
+## linux ubuntu/debian
+```
+sudo apt update
+sudo apt install tesseract-ocr tesseract-ocr-tha tesseract-ocr-jpn tesseract-ocr-chi-sim
+```
 
 ## การพัฒนาต่อ
 1. ติดตั้ง dependencies สำหรับการพัฒนา:
